@@ -1,0 +1,5 @@
+node_modules/
+.build-tools/
+node-portable.zip
+test-home.png
+

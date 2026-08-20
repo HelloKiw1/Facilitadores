@@ -1,0 +1,55 @@
+name: Publicar Kiwi PDF
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "pdf/**"
+      - "index.html"
+      - ".github/workflows/pdf-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pdf/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: pdf
+      - name: Gerar página estática
+        run: npm run build
+        working-directory: pdf
+      - name: Montar estrutura do site
+        run: |
+          mkdir -p site/pdf
+          cp index.html site/index.html
+          cp -R pdf/dist/. site/pdf/
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Preparar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
