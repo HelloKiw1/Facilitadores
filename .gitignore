@@ -1,0 +1,56 @@
+# Dependências instaladas localmente
+node_modules/
+
+# Caches e ferramentas de compilação
+.cache/
+.vite/
+.build-tools/
+coverage/
+.nyc_output/
+node-portable.zip
+
+# Logs de ferramentas e gerenciadores de pacotes
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variáveis e configurações privadas
+.env
+.env.*
+!.env.example
+
+# Arquivos temporários e cópias de segurança
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Perfis e artefatos de testes em navegadores
+.chrome-*/
+.edge-*/
+chrome-profile/
+edge-profile/
+*-screenshot.png
+*-check.png
+test-*.png
+
+# Configurações locais de editores
+.vscode/
+.idea/
+*.code-workspace
+
+# Arquivos gerados pelo sistema operacional
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Caches ocasionais de scripts
+__pycache__/
+*.py[cod]
+.pytest_cache/

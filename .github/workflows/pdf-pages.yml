@@ -8,7 +8,7 @@ on:
       - "imagem/**"
       - "conversor/**"
       - "index.html"
-      - "favicon.svg"
+      - "midias/**"
       - ".github/workflows/pdf-pages.yml"
   workflow_dispatch:
 
@@ -44,8 +44,9 @@ jobs:
         working-directory: pdf
       - name: Montar estrutura do site
         run: |
-          mkdir -p site/pdf site/imagem site/conversor
-          cp index.html favicon.svg site/
+          mkdir -p site/pdf site/imagem site/conversor site/midias
+          cp index.html site/index.html
+          cp midias/favicon.svg site/midias/favicon.svg
           cp -R pdf/dist/. site/pdf/
           cp imagem/index.html imagem/styles.css imagem/app.js imagem/favicon.svg site/imagem/
           cp conversor/index.html conversor/styles.css conversor/app.js conversor/favicon.svg site/conversor/
