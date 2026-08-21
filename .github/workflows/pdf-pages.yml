@@ -6,6 +6,7 @@ on:
     paths:
       - "pdf/**"
       - "imagem/**"
+      - "conversor/**"
       - "index.html"
       - ".github/workflows/pdf-pages.yml"
   workflow_dispatch:
@@ -42,10 +43,11 @@ jobs:
         working-directory: pdf
       - name: Montar estrutura do site
         run: |
-          mkdir -p site/pdf site/imagem
+          mkdir -p site/pdf site/imagem site/conversor
           cp index.html site/index.html
           cp -R pdf/dist/. site/pdf/
           cp imagem/index.html imagem/styles.css imagem/app.js site/imagem/
+          cp conversor/index.html conversor/styles.css conversor/app.js site/conversor/
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
       - name: Preparar artefato
