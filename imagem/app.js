@@ -419,6 +419,76 @@
     return visited;
   }
 
+  function cleanForegroundMask(mask, width, height, foregroundSeeds, seedPixels, removeSeedPixels) {
+    const total = width * height;
+    let cleaned = mask;
+
+    for (let iteration = 0; iteration < 2; iteration += 1) {
+      const next = cleaned.slice();
+      for (let y = 1; y < height - 1; y += 1) {
+        for (let x = 1; x < width - 1; x += 1) {
+          const index = y * width + x;
+          if (seedPixels[index * 4 + 3] > 30) { next[index] = 1; continue; }
+          if (removeSeedPixels[index * 4 + 3] > 30) { next[index] = 0; continue; }
+          let neighbors = 0;
+          for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+            for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+              if (offsetX || offsetY) neighbors += cleaned[index + offsetY * width + offsetX];
+            }
+          }
+          if (cleaned[index] && neighbors <= 1) next[index] = 0;
+          else if (!cleaned[index] && neighbors >= 7) next[index] = 1;
+        }
+      }
+      cleaned = next;
+    }
+
+    cleaned = connectedForeground(cleaned, width, height, foregroundSeeds);
+    const seen = new Uint8Array(total);
+    const queue = new Int32Array(total);
+    const component = new Int32Array(total);
+    const holeLimit = Math.max(20, Math.min(900, Math.round(total * .0012)));
+
+    for (let origin = 0; origin < total; origin += 1) {
+      if (cleaned[origin] || seen[origin]) continue;
+      let start = 0;
+      let end = 0;
+      let componentSize = 0;
+      let touchesBorder = false;
+      let touchesRemoveMark = false;
+      queue[end++] = origin;
+      seen[origin] = 1;
+      while (start < end) {
+        const index = queue[start++];
+        component[componentSize++] = index;
+        const x = index % width;
+        const y = Math.floor(index / width);
+        if (x === 0 || y === 0 || x === width - 1 || y === height - 1) touchesBorder = true;
+        if (removeSeedPixels[index * 4 + 3] > 30) touchesRemoveMark = true;
+        if (x > 0) {
+          const neighbor = index - 1;
+          if (!cleaned[neighbor] && !seen[neighbor]) { seen[neighbor] = 1; queue[end++] = neighbor; }
+        }
+        if (x + 1 < width) {
+          const neighbor = index + 1;
+          if (!cleaned[neighbor] && !seen[neighbor]) { seen[neighbor] = 1; queue[end++] = neighbor; }
+        }
+        if (y > 0) {
+          const neighbor = index - width;
+          if (!cleaned[neighbor] && !seen[neighbor]) { seen[neighbor] = 1; queue[end++] = neighbor; }
+        }
+        if (y + 1 < height) {
+          const neighbor = index + width;
+          if (!cleaned[neighbor] && !seen[neighbor]) { seen[neighbor] = 1; queue[end++] = neighbor; }
+        }
+      }
+      if (!touchesBorder && !touchesRemoveMark && componentSize <= holeLimit) {
+        for (let position = 0; position < componentSize; position += 1) cleaned[component[position]] = 1;
+      }
+    }
+    return cleaned;
+  }
+
   async function smartSelectObject() {
     if (!state.originalImage || state.busy) return;
     commitSmartMarks();
@@ -465,6 +535,7 @@
           const offset = y * width + x;
           if (seedPixels[offset * 4 + 3] > 30) foregroundSeeds.push(offset);
           if (removeSeedPixels[offset * 4 + 3] > 30) backgroundSeeds.push(offset);
+          else if (pixels[offset * 4 + 3] < 16 && x % 4 === 0 && y % 4 === 0) backgroundSeeds.push(offset);
           else if ((x < border || y < border || x >= width - border || y >= height - border) && ((x + y) % 2 === 0)) backgroundSeeds.push(offset);
         }
       }
@@ -473,8 +544,8 @@
       await nextFrame();
       const backgroundDistance = geodesicDistances(pixels, width, height, backgroundSeeds);
       await nextFrame();
-      const foregroundClusters = buildColorClusters(pixels, foregroundSeeds, 5);
-      const backgroundClusters = buildColorClusters(pixels, backgroundSeeds, 7);
+      let foregroundClusters = buildColorClusters(pixels, foregroundSeeds, 5);
+      let backgroundClusters = buildColorClusters(pixels, backgroundSeeds, 7);
       const candidates = new Uint8Array(width * height);
       for (let offset = 0; offset < candidates.length; offset += 1) {
         if (removeSeedPixels[offset * 4 + 3] > 30) {
@@ -485,13 +556,52 @@
           candidates[offset] = 1;
           continue;
         }
+        if (pixels[offset * 4 + 3] < 16) {
+          candidates[offset] = 0;
+          continue;
+        }
         const foregroundColor = nearestClusterDistance(pixels, offset, foregroundClusters);
         const backgroundColor = nearestClusterDistance(pixels, offset, backgroundClusters);
         const colorMatch = foregroundColor < backgroundColor * 1.18 + 8;
         const edgeMatch = foregroundDistance[offset] < backgroundDistance[offset] * 1.12 + 2;
         candidates[offset] = colorMatch || edgeMatch ? 1 : 0;
       }
-      const foregroundMask = connectedForeground(candidates, width, height, foregroundSeeds);
+      let foregroundMask = connectedForeground(candidates, width, height, foregroundSeeds);
+
+      for (let iteration = 0; iteration < 2; iteration += 1) {
+        const learnedForeground = foregroundSeeds.slice();
+        const learnedBackground = backgroundSeeds.slice();
+        const sampleStep = Math.max(1, Math.round(candidates.length / 160000));
+        for (let offset = 0; offset < candidates.length; offset += sampleStep) {
+          if (seedPixels[offset * 4 + 3] > 30 || removeSeedPixels[offset * 4 + 3] > 30) continue;
+          const foregroundIsCloser = foregroundDistance[offset] + 1 < backgroundDistance[offset] * .86;
+          const backgroundIsCloser = backgroundDistance[offset] + 1 < foregroundDistance[offset] * .86;
+          if (foregroundMask[offset] && foregroundIsCloser) learnedForeground.push(offset);
+          else if (!foregroundMask[offset] && backgroundIsCloser) learnedBackground.push(offset);
+        }
+        foregroundClusters = buildColorClusters(pixels, learnedForeground, 8);
+        backgroundClusters = buildColorClusters(pixels, learnedBackground, 10);
+
+        for (let offset = 0; offset < candidates.length; offset += 1) {
+          if (removeSeedPixels[offset * 4 + 3] > 30 || pixels[offset * 4 + 3] < 16) {
+            candidates[offset] = 0;
+            continue;
+          }
+          if (seedPixels[offset * 4 + 3] > 30) {
+            candidates[offset] = 1;
+            continue;
+          }
+          const foregroundColor = nearestClusterDistance(pixels, offset, foregroundClusters);
+          const backgroundColor = nearestClusterDistance(pixels, offset, backgroundClusters);
+          const wasForeground = foregroundMask[offset] === 1;
+          const edgeSupport = foregroundDistance[offset] < backgroundDistance[offset] * (wasForeground ? 1.16 : .94) + (wasForeground ? 2.4 : 1);
+          const colorSupport = foregroundColor < backgroundColor * (wasForeground ? 1.15 : 1.03) + (wasForeground ? 7 : 3);
+          candidates[offset] = wasForeground ? (edgeSupport || colorSupport ? 1 : 0) : (edgeSupport && colorSupport ? 1 : 0);
+        }
+        foregroundMask = connectedForeground(candidates, width, height, foregroundSeeds);
+        await nextFrame();
+      }
+      foregroundMask = cleanForegroundMask(foregroundMask, width, height, foregroundSeeds, seedPixels, removeSeedPixels);
 
       const smallMask = document.createElement('canvas');
       smallMask.width = width;
