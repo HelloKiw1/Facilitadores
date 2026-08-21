@@ -101,6 +101,7 @@ document.querySelector('#app').innerHTML = `
       <a href="#ferramentas">Ferramentas</a>
       <a href="#privacidade">Como funciona</a>
       <span class="privacy-pill">${icon('shield', 16)} <span>100% no navegador</span></span>
+      <a class="all-tools-link" href="../">Todos os facilitadores</a>
     </nav>
   </header>
 
