@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Remova fundos, melhore e comprima imagens direto no navegador." />
     <meta name="theme-color" content="#f6f6f2" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://api.remove.bg; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Kiwi Imagem — edite sem complicação</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -86,7 +86,7 @@
               <svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3Z"/><path d="m9 12 2 2 4-4"/></svg>
             </div>
             <div><span class="section-kicker">PRIVACIDADE CLARA</span><h2>Você decide onde a imagem é processada.</h2></div>
-            <p>Editor manual, melhoria e compressão rodam no seu navegador. Apenas o modo automático envia a imagem à API oficial remove.bg, depois de sua confirmação.</p>
+            <p>Todas as ferramentas rodam no seu navegador, inclusive a seleção inteligente. A imagem não é enviada, a ferramenta não pede chave e nenhum crédito é consumido.</p>
           </section>
         </section>
 
@@ -123,6 +123,7 @@
               </div>
               <div class="canvas-shell checker" id="canvasShell">
                 <canvas id="editorCanvas"></canvas>
+                <canvas id="selectionCanvas" aria-hidden="true"></canvas>
                 <img id="compareImage" alt="Imagem original para comparação" />
                 <div class="empty-canvas" id="canvasLoader"><span></span><p>Preparando sua imagem…</p></div>
               </div>
@@ -134,27 +135,29 @@
                 <span class="panel-kicker">REMOVER FUNDO</span>
                 <h2>Como deseja recortar?</h2>
                 <div class="mode-grid">
-                  <button class="mode-card active" data-mode="auto" type="button"><span class="mode-icon">✦</span><b>Automático</b><small>Um clique com IA</small></button>
+                  <button class="mode-card active" data-mode="smart" type="button"><span class="mode-icon">✦</span><b>Inteligente</b><small>Marque o objeto</small></button>
                   <button class="mode-card" data-mode="manual" type="button"><span class="mode-icon">⌁</span><b>Manual</b><small>Controle pelo pincel</small></button>
-                  <button class="mode-card" data-mode="mixed" type="button"><span class="mode-icon">◐</span><b>Misto</b><small>IA + acabamento</small></button>
+                  <button class="mode-card" data-mode="mixed" type="button"><span class="mode-icon">◐</span><b>Misto</b><small>Seleção + ajuste</small></button>
                 </div>
 
-                <div class="option-block" id="apiBlock">
-                  <div class="field-heading"><label for="apiKey">CHAVE DA API REMOVE.BG</label><a href="https://www.remove.bg/pt-br/api" target="_blank" rel="noreferrer">Obter chave ↗</a></div>
-                  <div class="key-field"><input id="apiKey" type="password" autocomplete="off" placeholder="Insira sua API key"><button id="toggleKey" type="button">Mostrar</button></div>
-                  <p class="field-note"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> A chave fica apenas na memória desta aba. A imagem será enviada à API oficial.</p>
-                  <button class="panel-primary" id="autoRemoveButton" type="button">✦ Remover fundo automaticamente</button>
+                <div class="option-block" id="smartBlock">
+                  <div class="smart-instruction"><span>1</span><div><b>Pinte dentro do objeto principal</b><small>Não precisa cobrir tudo. Faça alguns traços nas partes importantes.</small></div></div>
+                  <div class="range-heading"><label for="smartBrushSize">TAMANHO DA MARCAÇÃO</label><output id="smartBrushSizeValue">48 px</output></div>
+                  <input class="range" id="smartBrushSize" type="range" min="12" max="180" value="48">
+                  <button class="clear-mark-button" id="clearMarkButton" type="button">× Limpar marcação</button>
+                  <p class="field-note"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> A seleção inteligente trabalha somente neste dispositivo. Nenhuma imagem é enviada.</p>
+                  <button class="panel-primary" id="smartSelectButton" type="button">✦ Identificar objeto completo</button>
                 </div>
 
                 <div class="option-block hidden" id="brushBlock">
                   <div class="brush-actions">
                     <button class="active" data-brush="erase" type="button"><span>−</span> Apagar</button>
-                    <button data-brush="restore" type="button"><span>+</span> Restaurar</button>
+                    <button data-brush="restore" type="button"><span>+</span> Devolver</button>
                   </div>
                   <div class="range-heading"><label for="brushSize">TAMANHO DO PINCEL</label><output id="brushSizeValue">40 px</output></div>
                   <input class="range" id="brushSize" type="range" min="6" max="180" value="40">
                   <div class="history-actions"><button id="undoButton" type="button" disabled>↶ Desfazer</button><button id="resetButton" type="button">↻ Recomeçar</button></div>
-                  <p class="field-note">Arraste sobre a imagem para apagar ou recuperar áreas. Use o modo misto para refinar o recorte automático.</p>
+                  <p class="field-note">Arraste sobre o resultado para remover mais ou devolver qualquer parte da imagem original.</p>
                 </div>
               </div>
 

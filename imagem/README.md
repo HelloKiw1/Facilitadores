@@ -4,7 +4,7 @@ Editor estático de imagens para GitHub Pages.
 
 ## Recursos
 
-- Remoção automática de fundo com a API oficial remove.bg.
+- Seleção inteligente local: o usuário marca parte do objeto e o navegador expande o recorte usando cores e bordas.
 - Remoção manual com pincéis para apagar e restaurar.
 - Modo misto: recorte automático seguido de acabamento manual.
 - Aumento de resolução e nitidez processados localmente.
@@ -13,7 +13,7 @@ Editor estático de imagens para GitHub Pages.
 
 ## Privacidade
 
-O modo manual, a melhoria e a compressão são executados inteiramente no navegador. No modo automático ou misto, a imagem é enviada diretamente à API oficial remove.bg após o usuário informar sua própria chave. A chave fica somente na memória da aba e nunca é gravada no repositório ou no armazenamento do navegador.
+Todas as ferramentas são executadas inteiramente no navegador. A seleção inteligente calcula a distância entre a marcação, as cores, as bordas do objeto e o fundo por um algoritmo geodésico local. Nenhuma imagem, chave ou informação do usuário é enviada para uma API.
 
 ## Publicação
 

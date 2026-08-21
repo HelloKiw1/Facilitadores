@@ -126,8 +126,9 @@ kbd { padding: 2px 5px; border: 1px solid #d9ddd7; border-bottom-width: 2px; bor
 .canvas-shell.white { background: white; background-image: none; }
 .canvas-shell.dark { background: #273029; background-image: none; }
 .canvas-shell.custom { background-image: none; }
-#editorCanvas, #compareImage { display: block; max-width: calc(100% - 34px); max-height: calc(100vh - 240px); width: auto; height: auto; object-fit: contain; box-shadow: 0 8px 35px rgba(20,34,25,.14); }
+#editorCanvas, #selectionCanvas, #compareImage { display: block; max-width: calc(100% - 34px); max-height: calc(100vh - 240px); width: auto; height: auto; object-fit: contain; box-shadow: 0 8px 35px rgba(20,34,25,.14); }
 #editorCanvas.editing { cursor: crosshair; touch-action: none; }
+#selectionCanvas { position: absolute; inset: 0; margin: auto; pointer-events: none; box-shadow: none; }
 #compareImage { position: absolute; inset: 0; margin: auto; opacity: 0; pointer-events: none; transition: opacity .12s; }
 #compareImage.visible { opacity: 1; }
 .empty-canvas { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); background: rgba(246,247,244,.86); }
@@ -157,6 +158,13 @@ kbd { padding: 2px 5px; border: 1px solid #d9ddd7; border-bottom-width: 2px; bor
 .key-field button { padding: 0 11px; border: 0; color: var(--green); background: #f4f7f3; font-size: 9px; font-weight: 800; cursor: pointer; }
 .field-note { display: flex; align-items: flex-start; gap: 7px; margin: 9px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
 .field-note svg { flex: 0 0 auto; width: 13px; height: 13px; margin-top: 1px; color: var(--green); }
+.smart-instruction { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 17px; }
+.smart-instruction > span { flex: 0 0 auto; width: 25px; height: 25px; display: grid; place-items: center; border-radius: 8px; color: var(--green); background: var(--lime-soft); font-size: 10px; font-weight: 850; }
+.smart-instruction b, .smart-instruction small { display: block; }
+.smart-instruction b { font-size: 10px; }
+.smart-instruction small { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.clear-mark-button { margin-top: 10px; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 9px; font-weight: 750; cursor: pointer; }
+.clear-mark-button:hover { color: var(--green); }
 .panel-primary { width: 100%; margin-top: 17px; padding: 12px; border: 0; border-radius: 10px; color: white; background: var(--green); font-size: 10px; font-weight: 820; cursor: pointer; }
 .panel-primary:hover { background: var(--green-2); }
 .panel-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -224,7 +232,7 @@ kbd { padding: 2px 5px; border: 1px solid #d9ddd7; border-bottom-width: 2px; bor
   .studio-layout { display: flex; flex-direction: column; }
   .canvas-area { padding: 12px; min-height: 500px; }
   .canvas-shell { min-height: 400px; }
-  #editorCanvas, #compareImage { max-height: 430px; }
+  #editorCanvas, #selectionCanvas, #compareImage { max-height: 430px; }
   .control-panel { border-left: 0; border-top: 1px solid var(--line); padding: 25px 18px 40px; }
   .compare-button { font-size: 0; }
 }

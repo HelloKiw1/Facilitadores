@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const API_URL = 'https://api.remove.bg/v1.0/removebg';
   const MAX_ENHANCE_PIXELS = 12_000_000;
+  const MAX_SEGMENT_DIMENSION = 800;
 
   const state = {
     file: null,
@@ -10,11 +10,13 @@
     originalImage: null,
     originalCanvas: document.createElement('canvas'),
     tool: 'remove',
-    mode: 'auto',
+    mode: 'smart',
     brush: 'erase',
     drawing: false,
+    drawingKind: '',
     lastPoint: null,
     history: [],
+    hasSmartResult: false,
     exportBlob: null,
     exportExtension: 'png',
     resultLabel: '',
@@ -27,12 +29,13 @@
     landing: $('#landingView'), studio: $('#studioView'), input: $('#fileInput'),
     heroDrop: $('#heroDropZone'), heroSelect: $('#heroSelectButton'),
     back: $('#backButton'), change: $('#changeImageButton'), download: $('#downloadButton'),
-    fileName: $('#fileName'), fileMeta: $('#fileMeta'), canvas: $('#editorCanvas'),
+    fileName: $('#fileName'), fileMeta: $('#fileMeta'), canvas: $('#editorCanvas'), selectionCanvas: $('#selectionCanvas'),
     canvasShell: $('#canvasShell'), loader: $('#canvasLoader'), compare: $('#compareImage'),
     compareButton: $('#compareButton'), stats: $('#resultStats'),
     removePanel: $('#removePanel'), enhancePanel: $('#enhancePanel'), compressPanel: $('#compressPanel'),
-    apiBlock: $('#apiBlock'), brushBlock: $('#brushBlock'), apiKey: $('#apiKey'), toggleKey: $('#toggleKey'),
-    autoRemove: $('#autoRemoveButton'), brushSize: $('#brushSize'), brushSizeValue: $('#brushSizeValue'),
+    smartBlock: $('#smartBlock'), brushBlock: $('#brushBlock'), smartBrushSize: $('#smartBrushSize'),
+    smartBrushSizeValue: $('#smartBrushSizeValue'), clearMark: $('#clearMarkButton'), smartSelect: $('#smartSelectButton'),
+    brushSize: $('#brushSize'), brushSizeValue: $('#brushSizeValue'),
     undo: $('#undoButton'), reset: $('#resetButton'), scale: $('#scaleSelect'),
     clarity: $('#clarityRange'), clarityValue: $('#clarityValue'), enhance: $('#enhanceButton'),
     format: $('#formatSelect'), dimension: $('#dimensionSelect'), quality: $('#qualityRange'),
@@ -41,6 +44,7 @@
     error: $('#errorBox'), toast: $('#toast'), backgroundColor: $('#backgroundColor'),
   };
   const context = elements.canvas.getContext('2d', { willReadFrequently: true });
+  const selectionContext = elements.selectionCanvas.getContext('2d', { willReadFrequently: true });
   const originalContext = state.originalCanvas.getContext('2d', { willReadFrequently: true });
 
   function formatBytes(bytes) {
@@ -71,7 +75,7 @@
     elements.status.classList.toggle('hidden', !active);
     elements.statusTitle.textContent = title;
     elements.statusMessage.textContent = message;
-    elements.autoRemove.disabled = active;
+    elements.smartSelect.disabled = active;
     elements.enhance.disabled = active;
     elements.compress.disabled = active;
     elements.download.disabled = active || (!state.exportBlob && !elements.canvas.width);
@@ -138,7 +142,11 @@
   function resetToOriginal() {
     if (!state.originalImage) return;
     drawOriginalToOutput();
+    elements.selectionCanvas.width = state.originalCanvas.width;
+    elements.selectionCanvas.height = state.originalCanvas.height;
+    selectionContext.clearRect(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height);
     state.history = [];
+    state.hasSmartResult = false;
     state.exportBlob = null;
     state.exportExtension = 'png';
     state.resultLabel = 'Original no editor';
@@ -153,7 +161,7 @@
     elements.removePanel.classList.toggle('hidden', tool !== 'remove');
     elements.enhancePanel.classList.toggle('hidden', tool !== 'enhance');
     elements.compressPanel.classList.toggle('hidden', tool !== 'compress');
-    elements.canvas.classList.toggle('editing', tool === 'remove' && ['manual', 'mixed'].includes(state.mode));
+    elements.canvas.classList.toggle('editing', tool === 'remove');
     showError('');
     if (!keepCanvas) resetToOriginal();
     if (tool === 'remove') selectMode(state.mode, true);
@@ -162,11 +170,16 @@
   function selectMode(mode, preserve = false) {
     state.mode = mode;
     $$('.mode-card').forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
-    elements.apiBlock.classList.toggle('hidden', mode === 'manual');
-    elements.brushBlock.classList.toggle('hidden', mode !== 'manual' && !(mode === 'mixed' && state.exportBlob));
-    elements.autoRemove.textContent = mode === 'mixed' ? '✦ Remover e abrir acabamento' : '✦ Remover fundo automaticamente';
-    elements.canvas.classList.toggle('editing', mode === 'manual' || (mode === 'mixed' && !elements.brushBlock.classList.contains('hidden')));
+    elements.smartBlock.classList.toggle('hidden', mode === 'manual');
+    elements.brushBlock.classList.toggle('hidden', mode !== 'manual' && !state.hasSmartResult);
+    elements.smartSelect.textContent = mode === 'mixed' ? '✦ Identificar e abrir acabamento' : '✦ Identificar objeto completo';
+    elements.canvas.classList.add('editing');
     if (mode === 'manual' && !preserve) resetToOriginal();
+    if (mode !== 'manual' && !preserve) {
+      resetToOriginal();
+      elements.smartBlock.classList.remove('hidden');
+      elements.brushBlock.classList.add('hidden');
+    }
     showError('');
   }
 
@@ -188,55 +201,272 @@
     }
   }
 
-  async function removeBackground() {
-    const key = elements.apiKey.value.trim();
-    if (!key) {
-      showError('Informe sua chave da API remove.bg para usar o modo automático.');
-      elements.apiKey.focus();
-      return;
+  function clearMarking() {
+    selectionContext.clearRect(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height);
+  }
+
+  class MinHeap {
+    constructor() {
+      this.indices = [];
+      this.costs = [];
     }
-    showError('');
-    setStatus(true, 'Removendo o fundo…', 'A imagem está sendo processada pela API oficial remove.bg.');
-    try {
-      const form = new FormData();
-      form.append('image_file', state.file, state.file.name);
-      form.append('size', 'auto');
-      form.append('format', 'png');
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'X-Api-Key': key },
-        body: form,
-      });
-      if (!response.ok) throw new Error(await apiErrorMessage(response));
-      const blob = await response.blob();
-      await setCanvasFromBlob(blob, 'Fundo removido');
-      state.history = [];
-      elements.undo.disabled = true;
-      if (state.mode === 'mixed') {
-        elements.brushBlock.classList.remove('hidden');
-        elements.canvas.classList.add('editing');
-        showToast('Recorte pronto. Agora refine com o pincel.');
-      } else {
-        showToast('Fundo removido com sucesso.');
+
+    get size() { return this.indices.length; }
+
+    push(index, cost) {
+      let position = this.indices.length;
+      this.indices.push(index);
+      this.costs.push(cost);
+      while (position > 0) {
+        const parent = (position - 1) >> 1;
+        if (this.costs[parent] <= cost) break;
+        this.indices[position] = this.indices[parent];
+        this.costs[position] = this.costs[parent];
+        position = parent;
       }
-    } catch (error) {
-      showError(error.message || 'Não foi possível remover o fundo.');
-    } finally {
-      setStatus(false);
+      this.indices[position] = index;
+      this.costs[position] = cost;
+    }
+
+    pop() {
+      if (!this.indices.length) return null;
+      const index = this.indices[0];
+      const cost = this.costs[0];
+      const lastIndex = this.indices.pop();
+      const lastCost = this.costs.pop();
+      if (this.indices.length) {
+        let position = 0;
+        while (true) {
+          const left = position * 2 + 1;
+          const right = left + 1;
+          if (left >= this.indices.length) break;
+          let child = left;
+          if (right < this.indices.length && this.costs[right] < this.costs[left]) child = right;
+          if (this.costs[child] >= lastCost) break;
+          this.indices[position] = this.indices[child];
+          this.costs[position] = this.costs[child];
+          position = child;
+        }
+        this.indices[position] = lastIndex;
+        this.costs[position] = lastCost;
+      }
+      return { index, cost };
     }
   }
 
-  async function apiErrorMessage(response) {
-    let detail = '';
+  function geodesicDistances(pixels, width, height, seeds) {
+    const total = width * height;
+    const distances = new Float32Array(total);
+    distances.fill(Number.POSITIVE_INFINITY);
+    const heap = new MinHeap();
+    seeds.forEach((index) => {
+      if (index < 0 || index >= total || distances[index] === 0) return;
+      distances[index] = 0;
+      heap.push(index, 0);
+    });
+    const relax = (from, to, currentCost) => {
+      const a = from * 4;
+      const b = to * 4;
+      const red = pixels[a] - pixels[b];
+      const green = pixels[a + 1] - pixels[b + 1];
+      const blue = pixels[a + 2] - pixels[b + 2];
+      const edge = Math.sqrt(red * red * .3 + green * green * .59 + blue * blue * .11);
+      const nextCost = Math.max(currentCost, edge) + .018;
+      if (nextCost < distances[to]) {
+        distances[to] = nextCost;
+        heap.push(to, nextCost);
+      }
+    };
+    while (heap.size) {
+      const current = heap.pop();
+      if (current.cost > distances[current.index] + .0001) continue;
+      const x = current.index % width;
+      const y = Math.floor(current.index / width);
+      if (x > 0) relax(current.index, current.index - 1, current.cost);
+      if (x + 1 < width) relax(current.index, current.index + 1, current.cost);
+      if (y > 0) relax(current.index, current.index - width, current.cost);
+      if (y + 1 < height) relax(current.index, current.index + width, current.cost);
+    }
+    return distances;
+  }
+
+  function buildColorClusters(pixels, indices, requestedCount) {
+    const samples = [];
+    const step = Math.max(1, Math.floor(indices.length / 1400));
+    for (let position = 0; position < indices.length; position += step) {
+      const offset = indices[position] * 4;
+      samples.push([pixels[offset], pixels[offset + 1], pixels[offset + 2]]);
+    }
+    const count = Math.max(1, Math.min(requestedCount, samples.length));
+    const clusters = Array.from({ length: count }, (_, index) => samples[Math.floor(index * samples.length / count)].slice());
+    for (let iteration = 0; iteration < 6; iteration += 1) {
+      const sums = Array.from({ length: count }, () => [0, 0, 0, 0]);
+      samples.forEach((sample) => {
+        let best = 0;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        clusters.forEach((cluster, index) => {
+          const distance = colorDistance(sample[0], sample[1], sample[2], cluster);
+          if (distance < bestDistance) { bestDistance = distance; best = index; }
+        });
+        sums[best][0] += sample[0];
+        sums[best][1] += sample[1];
+        sums[best][2] += sample[2];
+        sums[best][3] += 1;
+      });
+      sums.forEach((sum, index) => {
+        if (sum[3]) clusters[index] = [sum[0] / sum[3], sum[1] / sum[3], sum[2] / sum[3]];
+      });
+    }
+    return clusters;
+  }
+
+  function colorDistance(red, green, blue, cluster) {
+    const deltaRed = red - cluster[0];
+    const deltaGreen = green - cluster[1];
+    const deltaBlue = blue - cluster[2];
+    return Math.sqrt(deltaRed * deltaRed * .3 + deltaGreen * deltaGreen * .59 + deltaBlue * deltaBlue * .11);
+  }
+
+  function nearestClusterDistance(pixels, pixelIndex, clusters) {
+    const offset = pixelIndex * 4;
+    let nearest = Number.POSITIVE_INFINITY;
+    clusters.forEach((cluster) => {
+      nearest = Math.min(nearest, colorDistance(pixels[offset], pixels[offset + 1], pixels[offset + 2], cluster));
+    });
+    return nearest;
+  }
+
+  function connectedForeground(candidates, width, height, seeds) {
+    const visited = new Uint8Array(width * height);
+    const queue = new Int32Array(width * height);
+    let start = 0;
+    let end = 0;
+    seeds.forEach((index) => {
+      if (visited[index]) return;
+      visited[index] = 1;
+      queue[end++] = index;
+    });
+    while (start < end) {
+      const index = queue[start++];
+      const x = index % width;
+      const y = Math.floor(index / width);
+      const visit = (neighbor) => {
+        if (!visited[neighbor] && candidates[neighbor]) {
+          visited[neighbor] = 1;
+          queue[end++] = neighbor;
+        }
+      };
+      if (x > 0) visit(index - 1);
+      if (x + 1 < width) visit(index + 1);
+      if (y > 0) visit(index - width);
+      if (y + 1 < height) visit(index + width);
+    }
+    return visited;
+  }
+
+  async function smartSelectObject() {
+    if (!state.originalImage || state.busy) return;
+    const markData = selectionContext.getImageData(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height).data;
+    let markedPixels = 0;
+    for (let index = 3; index < markData.length; index += 16) {
+      if (markData[index] > 10) markedPixels += 1;
+    }
+    if (markedPixels < 8) {
+      showError('Pinte alguns traços dentro do objeto que deseja manter.');
+      return;
+    }
+    showError('');
+    setStatus(true, 'Identificando o objeto…', 'Analisando cores e bordas localmente neste dispositivo.');
+    await nextFrame();
     try {
-      const data = await response.json();
-      detail = data?.errors?.[0]?.title || '';
-    } catch { /* response is not JSON */ }
-    if (response.status === 400) return detail || 'A imagem não pôde ser processada pela API.';
-    if (response.status === 402) return 'Sua conta remove.bg está sem créditos disponíveis.';
-    if (response.status === 403) return 'A chave da API é inválida ou não tem permissão.';
-    if (response.status === 429) return 'Limite de solicitações atingido. Aguarde um pouco e tente novamente.';
-    return detail || `A API remove.bg respondeu com o erro ${response.status}.`;
+      const originalWidth = state.originalCanvas.width;
+      const originalHeight = state.originalCanvas.height;
+      const scale = Math.min(1, MAX_SEGMENT_DIMENSION / Math.max(originalWidth, originalHeight));
+      const width = Math.max(2, Math.round(originalWidth * scale));
+      const height = Math.max(2, Math.round(originalHeight * scale));
+      const processing = document.createElement('canvas');
+      processing.width = width;
+      processing.height = height;
+      const processingContext = processing.getContext('2d');
+      processingContext.drawImage(state.originalCanvas, 0, 0, width, height);
+      const seedCanvas = document.createElement('canvas');
+      seedCanvas.width = width;
+      seedCanvas.height = height;
+      seedCanvas.getContext('2d').drawImage(elements.selectionCanvas, 0, 0, width, height);
+
+      const pixels = processingContext.getImageData(0, 0, width, height).data;
+      const seedPixels = seedCanvas.getContext('2d').getImageData(0, 0, width, height).data;
+      const foregroundSeeds = [];
+      const backgroundSeeds = [];
+      const border = Math.max(2, Math.round(Math.min(width, height) * .012));
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const offset = y * width + x;
+          if (seedPixels[offset * 4 + 3] > 30) foregroundSeeds.push(offset);
+          if ((x < border || y < border || x >= width - border || y >= height - border) && ((x + y) % 2 === 0)) backgroundSeeds.push(offset);
+        }
+      }
+      if (foregroundSeeds.length < 3) throw new Error('A marcação ficou pequena demais. Faça alguns traços dentro do objeto.');
+      const foregroundDistance = geodesicDistances(pixels, width, height, foregroundSeeds);
+      await nextFrame();
+      const backgroundDistance = geodesicDistances(pixels, width, height, backgroundSeeds);
+      await nextFrame();
+      const foregroundClusters = buildColorClusters(pixels, foregroundSeeds, 5);
+      const backgroundClusters = buildColorClusters(pixels, backgroundSeeds, 7);
+      const candidates = new Uint8Array(width * height);
+      for (let offset = 0; offset < candidates.length; offset += 1) {
+        const foregroundColor = nearestClusterDistance(pixels, offset, foregroundClusters);
+        const backgroundColor = nearestClusterDistance(pixels, offset, backgroundClusters);
+        const colorMatch = foregroundColor < backgroundColor * 1.18 + 8;
+        const edgeMatch = foregroundDistance[offset] < backgroundDistance[offset] * 1.12 + 2;
+        candidates[offset] = colorMatch || edgeMatch ? 1 : 0;
+      }
+      const foregroundMask = connectedForeground(candidates, width, height, foregroundSeeds);
+
+      const smallMask = document.createElement('canvas');
+      smallMask.width = width;
+      smallMask.height = height;
+      const smallContext = smallMask.getContext('2d');
+      const smallImage = smallContext.createImageData(width, height);
+      for (let offset = 0; offset < foregroundDistance.length; offset += 1) {
+        const foreground = foregroundMask[offset] === 1;
+        const pixel = offset * 4;
+        smallImage.data[pixel] = 255;
+        smallImage.data[pixel + 1] = 255;
+        smallImage.data[pixel + 2] = 255;
+        smallImage.data[pixel + 3] = foreground ? 255 : 0;
+      }
+      smallContext.putImageData(smallImage, 0, 0);
+      const fullMask = document.createElement('canvas');
+      fullMask.width = originalWidth;
+      fullMask.height = originalHeight;
+      const fullMaskContext = fullMask.getContext('2d');
+      fullMaskContext.imageSmoothingEnabled = true;
+      fullMaskContext.imageSmoothingQuality = 'high';
+      fullMaskContext.filter = 'blur(.45px)';
+      fullMaskContext.drawImage(smallMask, 0, 0, originalWidth, originalHeight);
+
+      drawOriginalToOutput();
+      context.save();
+      context.globalCompositeOperation = 'destination-in';
+      context.drawImage(fullMask, 0, 0);
+      context.restore();
+      clearMarking();
+      state.hasSmartResult = true;
+      state.history = [];
+      state.exportBlob = null;
+      state.exportExtension = 'png';
+      state.resultLabel = 'Objeto identificado localmente';
+      elements.undo.disabled = true;
+      elements.brushBlock.classList.remove('hidden');
+      elements.canvas.classList.add('editing');
+      updateStats();
+      showToast('Objeto identificado. Agora você pode apagar ou devolver detalhes.');
+    } catch (error) {
+      showError(error.message || 'Não foi possível identificar o objeto nesta imagem.');
+    } finally {
+      setStatus(false);
+    }
   }
 
   function saveHistory() {
@@ -300,13 +530,52 @@
     }
   }
 
+  function smartBrushRadius() {
+    const rect = elements.canvas.getBoundingClientRect();
+    const displayRatio = elements.canvas.width / Math.max(1, rect.width);
+    return Number(elements.smartBrushSize.value) * displayRatio / 2;
+  }
+
+  function stampSelection(x, y) {
+    const radius = smartBrushRadius();
+    selectionContext.save();
+    selectionContext.beginPath();
+    selectionContext.arc(x, y, radius, 0, Math.PI * 2);
+    selectionContext.fillStyle = 'rgba(39, 190, 104, .82)';
+    selectionContext.fill();
+    selectionContext.restore();
+  }
+
+  function drawSelectionLine(from, to) {
+    const distance = Math.hypot(to.x - from.x, to.y - from.y);
+    const steps = Math.max(1, Math.ceil(distance / Math.max(2, smartBrushRadius() * .35)));
+    for (let step = 0; step <= steps; step += 1) {
+      const amount = step / steps;
+      stampSelection(from.x + (to.x - from.x) * amount, from.y + (to.y - from.y) * amount);
+    }
+  }
+
+  function prepareSmartMarking() {
+    resetToOriginal();
+    state.hasSmartResult = false;
+    elements.smartBlock.classList.remove('hidden');
+    elements.brushBlock.classList.add('hidden');
+    elements.canvas.classList.add('editing');
+    clearMarking();
+    showError('');
+  }
+
   function startDrawing(event) {
-    if (state.tool !== 'remove' || elements.brushBlock.classList.contains('hidden') || state.busy) return;
+    if (state.tool !== 'remove' || state.busy) return;
+    const markingSmartObject = state.mode !== 'manual' && !state.hasSmartResult;
+    if (!markingSmartObject && elements.brushBlock.classList.contains('hidden')) return;
     event.preventDefault();
-    saveHistory();
+    if (!markingSmartObject) saveHistory();
     state.drawing = true;
+    state.drawingKind = markingSmartObject ? 'selection' : 'manual';
     state.lastPoint = canvasPoint(event);
-    stampBrush(state.lastPoint.x, state.lastPoint.y);
+    if (markingSmartObject) stampSelection(state.lastPoint.x, state.lastPoint.y);
+    else stampBrush(state.lastPoint.x, state.lastPoint.y);
     elements.canvas.setPointerCapture?.(event.pointerId);
   }
 
@@ -314,14 +583,18 @@
     if (!state.drawing) return;
     event.preventDefault();
     const point = canvasPoint(event);
-    drawBrushLine(state.lastPoint, point);
+    if (state.drawingKind === 'selection') drawSelectionLine(state.lastPoint, point);
+    else drawBrushLine(state.lastPoint, point);
     state.lastPoint = point;
   }
 
   function stopDrawing() {
     if (!state.drawing) return;
+    const completedKind = state.drawingKind;
     state.drawing = false;
+    state.drawingKind = '';
     state.lastPoint = null;
+    if (completedKind === 'selection') return;
     state.exportBlob = null;
     state.exportExtension = 'png';
     state.resultLabel = state.mode === 'mixed' ? 'Recorte refinado' : 'Edição manual';
@@ -501,12 +774,9 @@
   elements.download.addEventListener('click', downloadResult);
   $$('[data-switch-tool]').forEach((button) => button.addEventListener('click', () => selectTool(button.dataset.switchTool)));
   $$('.mode-card').forEach((button) => button.addEventListener('click', () => selectMode(button.dataset.mode)));
-  elements.toggleKey.addEventListener('click', () => {
-    const visible = elements.apiKey.type === 'text';
-    elements.apiKey.type = visible ? 'password' : 'text';
-    elements.toggleKey.textContent = visible ? 'Mostrar' : 'Ocultar';
-  });
-  elements.autoRemove.addEventListener('click', removeBackground);
+  elements.smartBrushSize.addEventListener('input', () => { elements.smartBrushSizeValue.value = `${elements.smartBrushSize.value} px`; });
+  elements.clearMark.addEventListener('click', prepareSmartMarking);
+  elements.smartSelect.addEventListener('click', smartSelectObject);
   $$('.brush-actions button').forEach((button) => button.addEventListener('click', () => {
     state.brush = button.dataset.brush;
     $$('.brush-actions button').forEach((item) => item.classList.toggle('active', item === button));
@@ -514,11 +784,8 @@
   elements.brushSize.addEventListener('input', () => { elements.brushSizeValue.value = `${elements.brushSize.value} px`; });
   elements.undo.addEventListener('click', undo);
   elements.reset.addEventListener('click', () => {
-    resetToOriginal();
-    if (state.mode === 'mixed') {
-      elements.brushBlock.classList.add('hidden');
-      elements.canvas.classList.remove('editing');
-    }
+    if (state.mode === 'manual') resetToOriginal();
+    else prepareSmartMarking();
   });
   elements.canvas.addEventListener('pointerdown', startDrawing);
   elements.canvas.addEventListener('pointermove', continueDrawing);
