@@ -141,7 +141,11 @@
                 </div>
 
                 <div class="option-block" id="smartBlock">
-                  <div class="smart-instruction"><span>1</span><div><b>Pinte dentro do objeto principal</b><small>Não precisa cobrir tudo. Faça alguns traços nas partes importantes.</small></div></div>
+                  <div class="smart-instruction"><span id="smartStepNumber">1</span><div><b id="smartInstructionTitle">Pinte dentro do objeto principal</b><small id="smartInstructionText">Não precisa cobrir tudo. Faça alguns traços nas partes importantes.</small></div></div>
+                  <div class="smart-label-actions hidden" id="smartRefineTools">
+                    <button class="active keep" data-smart-label="keep" type="button"><i></i> Manter no objeto</button>
+                    <button class="remove" data-smart-label="remove" type="button"><i></i> Remover do objeto</button>
+                  </div>
                   <div class="range-heading"><label for="smartBrushSize">TAMANHO DA MARCAÇÃO</label><output id="smartBrushSizeValue">48 px</output></div>
                   <input class="range" id="smartBrushSize" type="range" min="12" max="180" value="48">
                   <button class="clear-mark-button" id="clearMarkButton" type="button">× Limpar marcação</button>

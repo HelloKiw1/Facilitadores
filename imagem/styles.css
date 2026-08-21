@@ -128,7 +128,7 @@ kbd { padding: 2px 5px; border: 1px solid #d9ddd7; border-bottom-width: 2px; bor
 .canvas-shell.custom { background-image: none; }
 #editorCanvas, #selectionCanvas, #compareImage { display: block; max-width: calc(100% - 34px); max-height: calc(100vh - 240px); width: auto; height: auto; object-fit: contain; box-shadow: 0 8px 35px rgba(20,34,25,.14); }
 #editorCanvas.editing { cursor: crosshair; touch-action: none; }
-#selectionCanvas { position: absolute; inset: 0; margin: auto; pointer-events: none; box-shadow: none; }
+#selectionCanvas { position: absolute; inset: 0; margin: auto; pointer-events: none; box-shadow: none; opacity: .52; }
 #compareImage { position: absolute; inset: 0; margin: auto; opacity: 0; pointer-events: none; transition: opacity .12s; }
 #compareImage.visible { opacity: 1; }
 .empty-canvas { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); background: rgba(246,247,244,.86); }
@@ -163,6 +163,12 @@ kbd { padding: 2px 5px; border: 1px solid #d9ddd7; border-bottom-width: 2px; bor
 .smart-instruction b, .smart-instruction small { display: block; }
 .smart-instruction b { font-size: 10px; }
 .smart-instruction small { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.smart-label-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: -3px 0 17px; }
+.smart-label-actions button { padding: 9px 7px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; background: white; font-size: 9px; font-weight: 780; cursor: pointer; }
+.smart-label-actions button i { width: 9px; height: 9px; border-radius: 50%; background: #33bc70; }
+.smart-label-actions button.remove i { background: #df5c51; }
+.smart-label-actions button.active { color: var(--green); border-color: var(--green-2); background: #f2f8f1; box-shadow: 0 0 0 2px rgba(47,121,82,.08); }
+.smart-label-actions button.remove.active { color: #a3423a; border-color: #d97870; background: #fff3f1; box-shadow: 0 0 0 2px rgba(217,120,112,.08); }
 .clear-mark-button { margin-top: 10px; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 9px; font-weight: 750; cursor: pointer; }
 .clear-mark-button:hover { color: var(--green); }
 .panel-primary { width: 100%; margin-top: 17px; padding: 12px; border: 0; border-radius: 10px; color: white; background: var(--green); font-size: 10px; font-weight: 820; cursor: pointer; }

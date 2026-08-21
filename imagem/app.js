@@ -12,11 +12,15 @@
     tool: 'remove',
     mode: 'smart',
     brush: 'erase',
+    smartLabel: 'keep',
+    smartRefining: false,
     drawing: false,
     drawingKind: '',
     lastPoint: null,
     history: [],
     hasSmartResult: false,
+    smartKeepCanvas: document.createElement('canvas'),
+    smartRemoveCanvas: document.createElement('canvas'),
     exportBlob: null,
     exportExtension: 'png',
     resultLabel: '',
@@ -35,6 +39,8 @@
     removePanel: $('#removePanel'), enhancePanel: $('#enhancePanel'), compressPanel: $('#compressPanel'),
     smartBlock: $('#smartBlock'), brushBlock: $('#brushBlock'), smartBrushSize: $('#smartBrushSize'),
     smartBrushSizeValue: $('#smartBrushSizeValue'), clearMark: $('#clearMarkButton'), smartSelect: $('#smartSelectButton'),
+    smartRefineTools: $('#smartRefineTools'), smartStepNumber: $('#smartStepNumber'),
+    smartInstructionTitle: $('#smartInstructionTitle'), smartInstructionText: $('#smartInstructionText'),
     brushSize: $('#brushSize'), brushSizeValue: $('#brushSizeValue'),
     undo: $('#undoButton'), reset: $('#resetButton'), scale: $('#scaleSelect'),
     clarity: $('#clarityRange'), clarityValue: $('#clarityValue'), enhance: $('#enhanceButton'),
@@ -46,6 +52,8 @@
   const context = elements.canvas.getContext('2d', { willReadFrequently: true });
   const selectionContext = elements.selectionCanvas.getContext('2d', { willReadFrequently: true });
   const originalContext = state.originalCanvas.getContext('2d', { willReadFrequently: true });
+  const smartKeepContext = state.smartKeepCanvas.getContext('2d', { willReadFrequently: true });
+  const smartRemoveContext = state.smartRemoveCanvas.getContext('2d', { willReadFrequently: true });
 
   function formatBytes(bytes) {
     if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -68,6 +76,14 @@
   function showError(message = '') {
     elements.error.textContent = message;
     elements.error.classList.toggle('hidden', !message);
+  }
+
+  function setSmartLabel(label, startRefining = true) {
+    state.smartLabel = label;
+    state.smartRefining = startRefining && state.hasSmartResult;
+    $$('[data-smart-label]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.smartLabel === label);
+    });
   }
 
   function setStatus(active, title = 'Processando…', message = 'Isso pode levar alguns segundos.') {
@@ -145,8 +161,23 @@
     elements.selectionCanvas.width = state.originalCanvas.width;
     elements.selectionCanvas.height = state.originalCanvas.height;
     selectionContext.clearRect(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height);
+    state.smartKeepCanvas.width = state.originalCanvas.width;
+    state.smartKeepCanvas.height = state.originalCanvas.height;
+    state.smartRemoveCanvas.width = state.originalCanvas.width;
+    state.smartRemoveCanvas.height = state.originalCanvas.height;
+    smartKeepContext.clearRect(0, 0, state.smartKeepCanvas.width, state.smartKeepCanvas.height);
+    smartRemoveContext.clearRect(0, 0, state.smartRemoveCanvas.width, state.smartRemoveCanvas.height);
     state.history = [];
     state.hasSmartResult = false;
+    state.smartRefining = false;
+    setSmartLabel('keep', false);
+    elements.smartRefineTools.classList.add('hidden');
+    elements.smartStepNumber.textContent = '1';
+    elements.smartInstructionTitle.textContent = 'Pinte dentro do objeto principal';
+    elements.smartInstructionText.textContent = 'Não precisa cobrir tudo. Faça alguns traços nas partes importantes.';
+    elements.smartSelect.textContent = state.mode === 'mixed'
+      ? '✦ Identificar e abrir acabamento'
+      : '✦ Identificar objeto completo';
     state.exportBlob = null;
     state.exportExtension = 'png';
     state.resultLabel = 'Original no editor';
@@ -203,6 +234,30 @@
 
   function clearMarking() {
     selectionContext.clearRect(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height);
+  }
+
+  function commitSmartMarks() {
+    const width = elements.selectionCanvas.width;
+    const height = elements.selectionCanvas.height;
+    const pending = selectionContext.getImageData(0, 0, width, height);
+    const keep = smartKeepContext.getImageData(0, 0, width, height);
+    const remove = smartRemoveContext.getImageData(0, 0, width, height);
+    let committed = 0;
+    for (let index = 0; index < pending.data.length; index += 4) {
+      if (pending.data[index + 3] < 10) continue;
+      const keeping = pending.data[index + 1] >= pending.data[index];
+      const target = keeping ? keep.data : remove.data;
+      const opposite = keeping ? remove.data : keep.data;
+      target[index] = 255;
+      target[index + 1] = 255;
+      target[index + 2] = 255;
+      target[index + 3] = 255;
+      opposite[index + 3] = 0;
+      committed += 1;
+    }
+    smartKeepContext.putImageData(keep, 0, 0);
+    smartRemoveContext.putImageData(remove, 0, 0);
+    return committed;
   }
 
   class MinHeap {
@@ -366,7 +421,8 @@
 
   async function smartSelectObject() {
     if (!state.originalImage || state.busy) return;
-    const markData = selectionContext.getImageData(0, 0, elements.selectionCanvas.width, elements.selectionCanvas.height).data;
+    commitSmartMarks();
+    const markData = smartKeepContext.getImageData(0, 0, state.smartKeepCanvas.width, state.smartKeepCanvas.height).data;
     let markedPixels = 0;
     for (let index = 3; index < markData.length; index += 16) {
       if (markData[index] > 10) markedPixels += 1;
@@ -392,10 +448,15 @@
       const seedCanvas = document.createElement('canvas');
       seedCanvas.width = width;
       seedCanvas.height = height;
-      seedCanvas.getContext('2d').drawImage(elements.selectionCanvas, 0, 0, width, height);
+      seedCanvas.getContext('2d').drawImage(state.smartKeepCanvas, 0, 0, width, height);
+      const removeSeedCanvas = document.createElement('canvas');
+      removeSeedCanvas.width = width;
+      removeSeedCanvas.height = height;
+      removeSeedCanvas.getContext('2d').drawImage(state.smartRemoveCanvas, 0, 0, width, height);
 
       const pixels = processingContext.getImageData(0, 0, width, height).data;
       const seedPixels = seedCanvas.getContext('2d').getImageData(0, 0, width, height).data;
+      const removeSeedPixels = removeSeedCanvas.getContext('2d').getImageData(0, 0, width, height).data;
       const foregroundSeeds = [];
       const backgroundSeeds = [];
       const border = Math.max(2, Math.round(Math.min(width, height) * .012));
@@ -403,7 +464,8 @@
         for (let x = 0; x < width; x += 1) {
           const offset = y * width + x;
           if (seedPixels[offset * 4 + 3] > 30) foregroundSeeds.push(offset);
-          if ((x < border || y < border || x >= width - border || y >= height - border) && ((x + y) % 2 === 0)) backgroundSeeds.push(offset);
+          if (removeSeedPixels[offset * 4 + 3] > 30) backgroundSeeds.push(offset);
+          else if ((x < border || y < border || x >= width - border || y >= height - border) && ((x + y) % 2 === 0)) backgroundSeeds.push(offset);
         }
       }
       if (foregroundSeeds.length < 3) throw new Error('A marcação ficou pequena demais. Faça alguns traços dentro do objeto.');
@@ -415,6 +477,14 @@
       const backgroundClusters = buildColorClusters(pixels, backgroundSeeds, 7);
       const candidates = new Uint8Array(width * height);
       for (let offset = 0; offset < candidates.length; offset += 1) {
+        if (removeSeedPixels[offset * 4 + 3] > 30) {
+          candidates[offset] = 0;
+          continue;
+        }
+        if (seedPixels[offset * 4 + 3] > 30) {
+          candidates[offset] = 1;
+          continue;
+        }
         const foregroundColor = nearestClusterDistance(pixels, offset, foregroundClusters);
         const backgroundColor = nearestClusterDistance(pixels, offset, backgroundClusters);
         const colorMatch = foregroundColor < backgroundColor * 1.18 + 8;
@@ -453,15 +523,21 @@
       context.restore();
       clearMarking();
       state.hasSmartResult = true;
+      state.smartRefining = true;
       state.history = [];
       state.exportBlob = null;
       state.exportExtension = 'png';
       state.resultLabel = 'Objeto identificado localmente';
       elements.undo.disabled = true;
       elements.brushBlock.classList.remove('hidden');
+      elements.smartRefineTools.classList.remove('hidden');
+      elements.smartStepNumber.textContent = '2';
+      elements.smartInstructionTitle.textContent = 'Quer melhorar a identificação?';
+      elements.smartInstructionText.textContent = 'Marque outras áreas para manter ou remover e processe novamente quantas vezes precisar.';
+      elements.smartSelect.textContent = '✦ Refinar identificação novamente';
       elements.canvas.classList.add('editing');
       updateStats();
-      showToast('Objeto identificado. Agora você pode apagar ou devolver detalhes.');
+      showToast('Objeto identificado. Marque mais áreas ou use o acabamento manual.');
     } catch (error) {
       showError(error.message || 'Não foi possível identificar o objeto nesta imagem.');
     } finally {
@@ -541,7 +617,9 @@
     selectionContext.save();
     selectionContext.beginPath();
     selectionContext.arc(x, y, radius, 0, Math.PI * 2);
-    selectionContext.fillStyle = 'rgba(39, 190, 104, .82)';
+    selectionContext.fillStyle = state.smartLabel === 'remove'
+      ? '#e15046'
+      : '#27be68';
     selectionContext.fill();
     selectionContext.restore();
   }
@@ -567,7 +645,7 @@
 
   function startDrawing(event) {
     if (state.tool !== 'remove' || state.busy) return;
-    const markingSmartObject = state.mode !== 'manual' && !state.hasSmartResult;
+    const markingSmartObject = state.mode !== 'manual' && (!state.hasSmartResult || state.smartRefining);
     if (!markingSmartObject && elements.brushBlock.classList.contains('hidden')) return;
     event.preventDefault();
     if (!markingSmartObject) saveHistory();
@@ -775,9 +853,21 @@
   $$('[data-switch-tool]').forEach((button) => button.addEventListener('click', () => selectTool(button.dataset.switchTool)));
   $$('.mode-card').forEach((button) => button.addEventListener('click', () => selectMode(button.dataset.mode)));
   elements.smartBrushSize.addEventListener('input', () => { elements.smartBrushSizeValue.value = `${elements.smartBrushSize.value} px`; });
-  elements.clearMark.addEventListener('click', prepareSmartMarking);
+  elements.clearMark.addEventListener('click', () => {
+    clearMarking();
+    showToast('Marcações desta rodada removidas.');
+  });
   elements.smartSelect.addEventListener('click', smartSelectObject);
+  $$('[data-smart-label]').forEach((button) => button.addEventListener('click', () => {
+    setSmartLabel(button.dataset.smartLabel);
+    elements.canvas.classList.add('editing');
+    showToast(button.dataset.smartLabel === 'remove'
+      ? 'Pinte o que deve sair e clique em Refinar identificação.'
+      : 'Pinte o que deve permanecer e clique em Refinar identificação.');
+  }));
   $$('.brush-actions button').forEach((button) => button.addEventListener('click', () => {
+    state.smartRefining = false;
+    clearMarking();
     state.brush = button.dataset.brush;
     $$('.brush-actions button').forEach((item) => item.classList.toggle('active', item === button));
   }));

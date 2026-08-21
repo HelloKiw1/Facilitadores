@@ -4,6 +4,7 @@ Editor estático de imagens para GitHub Pages.
 
 ## Recursos
 
+- Refinamento inteligente repetível com marcações de áreas para manter ou remover.
 - Seleção inteligente local: o usuário marca parte do objeto e o navegador expande o recorte usando cores e bordas.
 - Remoção manual com pincéis para apagar e restaurar.
 - Modo misto: recorte automático seguido de acabamento manual.
