@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f7f6fb" />
+    <meta name="theme-color" content="#f7f5fa" />
     <meta name="description" content="Converta imagens, textos, dados e outros arquivos diretamente no navegador, sem enviar nada." />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Kiwi Conversor — conversão local de arquivos</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="./app.js" defer></script>
   </head>
@@ -42,7 +43,13 @@
       <section class="workspace hidden" id="workspace" aria-live="polite">
         <div class="workspace-heading">
           <div><span class="section-kicker">FILA DE CONVERSÃO</span><h2 id="queueTitle">Arquivos selecionados</h2></div>
-          <button class="add-button" id="addButton" type="button">+ Adicionar arquivos</button>
+          <div class="queue-actions">
+            <label class="bulk-format" for="bulkTarget">
+              <span>Todos para</span>
+              <select id="bulkTarget" disabled><option value="">Formato para todos</option></select>
+            </label>
+            <button class="add-button" id="addButton" type="button">+ Adicionar arquivos</button>
+          </div>
         </div>
 
         <div class="file-list" id="fileList"></div>

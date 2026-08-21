@@ -5,6 +5,7 @@ Conversor estático de arquivos para GitHub Pages.
 ## Conversões locais
 
 - Imagens para PNG, JPG, WebP e BMP.
+- Aplicação de um único formato de saída a todos os arquivos compatíveis da fila.
 - Áudios compatíveis com o navegador para WAV PCM.
 - JSON para CSV, texto ou HTML.
 - CSV para JSON, texto ou HTML.

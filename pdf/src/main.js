@@ -95,7 +95,7 @@ document.querySelector('#app').innerHTML = `
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Kiwi PDF — página inicial">
       <span class="brand-mark">${icon('logo', 23)}</span>
-      <span>Kiwi PDF</span>
+      <span>Kiwi <b>PDF</b></span>
     </a>
     <nav class="header-nav" aria-label="Navegação principal">
       <a href="#ferramentas">Ferramentas</a>

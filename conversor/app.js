@@ -30,7 +30,7 @@
     dropZone: $('#dropZone'), fileInput: $('#fileInput'), select: $('#selectButton'), workspace: $('#workspace'),
     add: $('#addButton'), list: $('#fileList'), queueTitle: $('#queueTitle'), clear: $('#clearButton'),
     convert: $('#convertButton'), downloadAll: $('#downloadAllButton'), quality: $('#qualityRange'),
-    qualityValue: $('#qualityValue'), template: $('#fileTemplate'), toast: $('#toast'),
+    qualityValue: $('#qualityValue'), bulkTarget: $('#bulkTarget'), template: $('#fileTemplate'), toast: $('#toast'),
   };
 
   function extensionOf(name) {
@@ -75,8 +75,12 @@
     const extension = extensionOf(file.name);
     const category = categoryOf(file);
     let targets = [];
-    if (category === 'image') targets = ['png', 'jpg', 'webp', 'bmp'].filter((target) => target !== (extension === 'jpeg' ? 'jpg' : extension));
-    else if (category === 'audio') targets = extension === 'wav' ? [] : ['wav'];
+    if (category === 'image') {
+      const current = extension === 'jpeg' ? 'jpg' : extension;
+      targets = ['png', 'jpg', 'webp', 'bmp'].filter((target) => target !== current);
+      if (definitions[current]) targets.push(current);
+    }
+    else if (category === 'audio') targets = ['wav'];
     else if (category === 'gzip') targets = ['ungzip'];
     else if (category === 'base64') targets = ['binary'];
     else if (category === 'text') {
@@ -106,6 +110,46 @@
     elements.downloadAll.textContent = completed === 1 ? 'Baixar resultado' : `Baixar ${completed} resultados`;
     elements.convert.disabled = state.converting || count === 0;
     elements.clear.disabled = state.converting;
+    updateBulkTargets();
+  }
+
+  function updateBulkTargets() {
+    const counts = new Map();
+    state.items.forEach((item) => item.targets.forEach((target) => counts.set(target, (counts.get(target) || 0) + 1)));
+    const available = [...counts.entries()].filter(([, count]) => count >= 2);
+    elements.bulkTarget.replaceChildren();
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = available.length ? 'Formato para todos' : 'Sem formato comum';
+    elements.bulkTarget.appendChild(placeholder);
+    available.forEach(([target, count]) => {
+      const option = document.createElement('option');
+      option.value = target;
+      option.textContent = count === state.items.length
+        ? `${definitions[target].label} · todos (${count})`
+        : `${definitions[target].label} · ${count} compatíveis`;
+      elements.bulkTarget.appendChild(option);
+    });
+    elements.bulkTarget.value = '';
+    elements.bulkTarget.disabled = state.converting || !available.length;
+  }
+
+  function applyTargetToAll(target) {
+    if (!target || state.converting) return;
+    let applied = 0;
+    state.items.forEach((item) => {
+      if (!item.targets.includes(target)) return;
+      item.target = target;
+      resetItem(item);
+      const select = item.node?.querySelector('select');
+      if (select) select.value = target;
+      updateItem(item);
+      applied += 1;
+    });
+    updateSummary();
+    showToast(applied === state.items.length
+      ? `${definitions[target].label} aplicado a todos os arquivos.`
+      : `${definitions[target].label} aplicado a ${applied} arquivo(s) compatível(is).`);
   }
 
   function renderItem(item) {
@@ -580,6 +624,7 @@
   elements.clear.addEventListener('click', clearQueue);
   elements.convert.addEventListener('click', convertAll);
   elements.downloadAll.addEventListener('click', downloadAll);
+  elements.bulkTarget.addEventListener('change', () => applyTargetToAll(elements.bulkTarget.value));
   elements.quality.addEventListener('input', () => {
     elements.qualityValue.value = `${elements.quality.value}%`;
     state.items.filter((item) => ['jpg', 'webp'].includes(item.target)).forEach((item) => { resetItem(item); updateItem(item); });
