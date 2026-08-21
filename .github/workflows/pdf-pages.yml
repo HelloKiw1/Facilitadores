@@ -1,10 +1,11 @@
-name: Publicar Kiwi PDF
+name: Publicar Facilitadores Kiwi
 
 on:
   push:
     branches: [main, master]
     paths:
       - "pdf/**"
+      - "imagem/**"
       - "index.html"
       - ".github/workflows/pdf-pages.yml"
   workflow_dispatch:
@@ -41,9 +42,10 @@ jobs:
         working-directory: pdf
       - name: Montar estrutura do site
         run: |
-          mkdir -p site/pdf
+          mkdir -p site/pdf site/imagem
           cp index.html site/index.html
           cp -R pdf/dist/. site/pdf/
+          cp imagem/index.html imagem/styles.css imagem/app.js site/imagem/
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
       - name: Preparar artefato

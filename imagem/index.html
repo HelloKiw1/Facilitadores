@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Remova fundos, melhore e comprima imagens direto no navegador." />
+    <meta name="theme-color" content="#f6f6f2" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://api.remove.bg; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <title>Kiwi Imagem — edite sem complicação</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="Kiwi Imagem — início">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7.5A3.5 3.5 0 0 1 7.5 4h9A3.5 3.5 0 0 1 20 7.5v9a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5Z"/><path d="m5 17 4.5-5 3.2 3 2.1-2.2L20 18"/><circle cx="15.8" cy="8.2" r="1.5"/></svg>
+          </span>
+          <span>Kiwi <b>Imagem</b></span>
+        </a>
+        <nav>
+          <a href="#ferramentas">Ferramentas</a>
+          <a href="#privacidade">Privacidade</a>
+          <a class="back-link" href="../">Todos os facilitadores</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="landing" id="landingView">
+          <div class="hero">
+            <div class="hero-copy">
+              <span class="eyebrow"><i></i> Editor de imagens simples e inteligente</span>
+              <h1>Uma imagem melhor.<br><em>Sem complicação.</em></h1>
+              <p>Remova fundos, recupere detalhes, aumente a qualidade e reduza o tamanho dos arquivos em poucos cliques.</p>
+              <div class="hero-points">
+                <span><b>✓</b> Edição manual local</span>
+                <span><b>✓</b> Sem instalação</span>
+                <span><b>✓</b> JPG, PNG e WebP</span>
+              </div>
+            </div>
+            <div class="upload-card" id="heroDropZone">
+              <div class="upload-visual">
+                <span class="floating-card card-one">PNG</span>
+                <span class="upload-icon">
+                  <svg viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/></svg>
+                </span>
+                <span class="floating-card card-two">JPG</span>
+              </div>
+              <h2>Solte sua imagem aqui</h2>
+              <p>ou escolha um arquivo do seu dispositivo</p>
+              <button class="primary-button" id="heroSelectButton" type="button">Selecionar imagem</button>
+              <small>Você também pode colar com <kbd>Ctrl</kbd> + <kbd>V</kbd></small>
+            </div>
+          </div>
+
+          <section class="tool-section" id="ferramentas">
+            <div class="section-heading">
+              <div><span class="section-kicker">FERRAMENTAS</span><h2>Tudo que sua imagem precisa</h2></div>
+              <p>Escolha uma ferramenta e comece com qualquer foto.</p>
+            </div>
+            <div class="tool-grid">
+              <button class="tool-card remove-card" type="button" data-tool="remove">
+                <span class="card-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 15 5-5 4 4 2-2 5 5"/><path d="M15 3v4m-2-2h4"/></svg></span>
+                <span class="tool-tag">MAIS USADO</span>
+                <h3>Remover fundo</h3>
+                <p>Use o automático, apague manualmente ou combine os dois para um recorte perfeito.</p>
+                <span class="card-link">Começar <b>→</b></span>
+              </button>
+              <button class="tool-card enhance-card" type="button" data-tool="enhance">
+                <span class="card-icon"><svg viewBox="0 0 24 24"><path d="m12 3 1.3 4.2L17.5 8.5l-4.2 1.3L12 14l-1.3-4.2-4.2-1.3 4.2-1.3Z"/><path d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8Z"/></svg></span>
+                <h3>Melhorar qualidade</h3>
+                <p>Aumente a resolução e aplique nitidez para recuperar uma aparência mais definida.</p>
+                <span class="card-link">Melhorar agora <b>→</b></span>
+              </button>
+              <button class="tool-card compress-card" type="button" data-tool="compress">
+                <span class="card-icon"><svg viewBox="0 0 24 24"><path d="m8 3 4 4 4-4M12 7V2m-4 19 4-4 4 4m-4-4v5M3 8l4 4-4 4m4-4H2m19-4-4 4 4 4m-4-4h5"/></svg></span>
+                <h3>Comprimir imagem</h3>
+                <p>Reduza o peso escolhendo formato, qualidade e dimensão máxima.</p>
+                <span class="card-link">Comprimir agora <b>→</b></span>
+              </button>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="privacidade">
+            <div class="privacy-badge">
+              <svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3Z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div><span class="section-kicker">PRIVACIDADE CLARA</span><h2>Você decide onde a imagem é processada.</h2></div>
+            <p>Editor manual, melhoria e compressão rodam no seu navegador. Apenas o modo automático envia a imagem à API oficial remove.bg, depois de sua confirmação.</p>
+          </section>
+        </section>
+
+        <section class="studio hidden" id="studioView" aria-label="Editor de imagem">
+          <div class="studio-topbar">
+            <button class="back-button" id="backButton" type="button" aria-label="Voltar">
+              <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="file-title"><strong id="fileName">imagem.jpg</strong><small id="fileMeta">—</small></div>
+            <div class="tool-switcher" role="tablist">
+              <button class="active" type="button" data-switch-tool="remove">Remover fundo</button>
+              <button type="button" data-switch-tool="enhance">Melhorar</button>
+              <button type="button" data-switch-tool="compress">Comprimir</button>
+            </div>
+            <button class="ghost-button" id="changeImageButton" type="button">Trocar imagem</button>
+            <button class="download-button" id="downloadButton" type="button" disabled>
+              <svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg> Baixar
+            </button>
+          </div>
+
+          <div class="studio-layout">
+            <div class="canvas-area">
+              <div class="canvas-toolbar">
+                <div class="preview-backgrounds" aria-label="Fundo de visualização">
+                  <button class="checker active" data-background="checker" type="button" aria-label="Transparente"></button>
+                  <button class="white" data-background="white" type="button" aria-label="Branco"></button>
+                  <button class="dark" data-background="dark" type="button" aria-label="Escuro"></button>
+                  <label class="color-picker" aria-label="Escolher cor"><input id="backgroundColor" type="color" value="#dce8ff"><span></span></label>
+                </div>
+                <button class="compare-button" id="compareButton" type="button">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v18M7 7H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2m10-10h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/></svg>
+                  Segure para comparar
+                </button>
+              </div>
+              <div class="canvas-shell checker" id="canvasShell">
+                <canvas id="editorCanvas"></canvas>
+                <img id="compareImage" alt="Imagem original para comparação" />
+                <div class="empty-canvas" id="canvasLoader"><span></span><p>Preparando sua imagem…</p></div>
+              </div>
+              <div class="result-stats" id="resultStats"></div>
+            </div>
+
+            <aside class="control-panel">
+              <div class="panel-view" id="removePanel">
+                <span class="panel-kicker">REMOVER FUNDO</span>
+                <h2>Como deseja recortar?</h2>
+                <div class="mode-grid">
+                  <button class="mode-card active" data-mode="auto" type="button"><span class="mode-icon">✦</span><b>Automático</b><small>Um clique com IA</small></button>
+                  <button class="mode-card" data-mode="manual" type="button"><span class="mode-icon">⌁</span><b>Manual</b><small>Controle pelo pincel</small></button>
+                  <button class="mode-card" data-mode="mixed" type="button"><span class="mode-icon">◐</span><b>Misto</b><small>IA + acabamento</small></button>
+                </div>
+
+                <div class="option-block" id="apiBlock">
+                  <div class="field-heading"><label for="apiKey">CHAVE DA API REMOVE.BG</label><a href="https://www.remove.bg/pt-br/api" target="_blank" rel="noreferrer">Obter chave ↗</a></div>
+                  <div class="key-field"><input id="apiKey" type="password" autocomplete="off" placeholder="Insira sua API key"><button id="toggleKey" type="button">Mostrar</button></div>
+                  <p class="field-note"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> A chave fica apenas na memória desta aba. A imagem será enviada à API oficial.</p>
+                  <button class="panel-primary" id="autoRemoveButton" type="button">✦ Remover fundo automaticamente</button>
+                </div>
+
+                <div class="option-block hidden" id="brushBlock">
+                  <div class="brush-actions">
+                    <button class="active" data-brush="erase" type="button"><span>−</span> Apagar</button>
+                    <button data-brush="restore" type="button"><span>+</span> Restaurar</button>
+                  </div>
+                  <div class="range-heading"><label for="brushSize">TAMANHO DO PINCEL</label><output id="brushSizeValue">40 px</output></div>
+                  <input class="range" id="brushSize" type="range" min="6" max="180" value="40">
+                  <div class="history-actions"><button id="undoButton" type="button" disabled>↶ Desfazer</button><button id="resetButton" type="button">↻ Recomeçar</button></div>
+                  <p class="field-note">Arraste sobre a imagem para apagar ou recuperar áreas. Use o modo misto para refinar o recorte automático.</p>
+                </div>
+              </div>
+
+              <div class="panel-view hidden" id="enhancePanel">
+                <span class="panel-kicker">MELHORAR QUALIDADE</span>
+                <h2>Mais resolução e definição</h2>
+                <div class="option-block">
+                  <label class="field-label" for="scaleSelect">AUMENTAR RESOLUÇÃO</label>
+                  <select id="scaleSelect"><option value="1.5">1,5× maior</option><option value="2" selected>2× maior</option><option value="3">3× maior</option></select>
+                  <div class="range-heading"><label for="clarityRange">NITIDEZ</label><output id="clarityValue">35%</output></div>
+                  <input class="range" id="clarityRange" type="range" min="0" max="80" value="35">
+                  <p class="field-note">Usa redimensionamento de alta qualidade e nitidez local. O resultado é limitado a 20 megapixels para proteger a memória do dispositivo.</p>
+                  <button class="panel-primary" id="enhanceButton" type="button">✦ Melhorar imagem</button>
+                </div>
+              </div>
+
+              <div class="panel-view hidden" id="compressPanel">
+                <span class="panel-kicker">COMPRIMIR IMAGEM</span>
+                <h2>Menor, sem perder o essencial</h2>
+                <div class="option-block">
+                  <label class="field-label" for="formatSelect">FORMATO DE SAÍDA</label>
+                  <select id="formatSelect"><option value="image/webp">WebP — melhor compressão</option><option value="image/jpeg" selected>JPG — mais compatível</option><option value="image/png">PNG — transparência</option></select>
+                  <label class="field-label second" for="dimensionSelect">DIMENSÃO MÁXIMA</label>
+                  <select id="dimensionSelect"><option value="0">Manter original</option><option value="3840">3840 px</option><option value="2560">2560 px</option><option value="1920" selected>1920 px</option><option value="1280">1280 px</option><option value="800">800 px</option></select>
+                  <div class="range-heading"><label for="qualityRange">QUALIDADE</label><output id="qualityValue">82%</output></div>
+                  <input class="range" id="qualityRange" type="range" min="20" max="100" value="82">
+                  <p class="field-note">A imagem é comprimida localmente. PNG preserva transparência, mas pode resultar em um arquivo maior.</p>
+                  <button class="panel-primary" id="compressButton" type="button">Comprimir imagem</button>
+                </div>
+              </div>
+
+              <div class="status-box hidden" id="statusBox" role="status">
+                <span class="status-spinner"></span><div><strong id="statusTitle">Processando…</strong><small id="statusMessage">Isso pode levar alguns segundos.</small></div>
+              </div>
+              <div class="error-box hidden" id="errorBox" role="alert"></div>
+            </aside>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer"><span>Kiwi Imagem · Parte dos Facilitadores Kiwi</span><span>Feito para funcionar bem, sem complicar.</span></footer>
+
+      <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden />
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
